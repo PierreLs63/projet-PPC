@@ -3,6 +3,7 @@ import random
 import multiprocessing
 import time
 import signal
+import os
 # Create a Python script that simulates an energy-producing and consuming home
 class Home:
     def __init__(self, production_rate, consumption_rate, trade_policy):
@@ -27,10 +28,10 @@ class Home:
             pass
 
 
-class Market:
+class Market(multiprocessing.Process):
     def __init__(self, initial_price):
+        super().__init__()
         self.price = initial_price
-        self.transactions_lock = threading.Lock()
         self.temperature = multiprocessing.Value('d', 0.0)
         self.ensoleillement = multiprocessing.Value('i', 0)
         signal.signal(signal.SIGINT, self.HiverVolcanique)
@@ -48,14 +49,18 @@ class Market:
             f.write('Data outputted by SIGUSR1')
 
     def Siberia(self, signum, frame):
+        #temp.duration =20
+            #temp.temp_change = 3
+            #temp.upDown = -1
+            #temp.ensoleillement = 0.01
         print("Received SIGUSR2. Outputting data to output2.txt...")
-        with open('output2.txt', 'w') as f:
-            f.write('Data outputted by SIGUSR2')
 
     def RetourNormal(self, signum, frame):
-        print("Received SIGUSR2. Outputting data to output2.txt...")
-        with open('output2.txt', 'w') as f:
-            f.write('Data outputted by SIGUSR2')        
+        #temp.duration =5
+            #temp.temp_change = 2
+            #temp.ensoleillement = 0.5
+            #temp.temperature = 22
+        print("Received SIGUSR2. Outputting data to output2.txt...")        
 
     def update_price(self, transaction_amount):
         # acquire lock to prevent multiple transactions from happening simultaneously
@@ -63,13 +68,12 @@ class Market:
         self.price += transaction_amount
         self.transactions_lock.release()
         
-    def start_market_thread(self):
-        market_thread = threading.Thread(target=self.run)
-        market_thread.start()
-        
     def run(self):
+        print('salut')
+        t=External()
+        t.run()
         while True:
-            # check for new transactions and update price accordingly
+            time.sleep(1)
             pass
 
 
@@ -103,44 +107,35 @@ class Weather(multiprocessing.Process):
         while True:
             self.update_temperature()
             self.update_ensoleillement()
-            print(self.temperature)
-            print(self.ensoleillement)
+            #print(self.temperature)
+            #print(self.ensoleillement)
             time.sleep(1)     
 
 class External(multiprocessing.Process):
-       def __init__(self):
-        super().__init__() 
-       def GulfWar():
-              #price*=1.4
-              pass
-       def Alloc():
-            #price*=0.9
-            pass
-       def Canicule():
-            #temp.duration =20
-            #temp.temp_change = 3
-            #temp.upDown = 1
-            #temp.ensoleillement = 0.99
-            pass
-       def RetourNormal():
-            #temp.duration =5
-            #temp.temp_change = 2
-            #temp.ensoleillement = 0.5
-            #temp.temperature = 22
-            pass
-       def Siberia():
-            #temp.duration =20
-            #temp.temp_change = 3
-            #temp.upDown = -1
-            #temp.ensoleillement = 0.01
-            pass
-       def HiverVolcanique():
-           #process.close()
-           #print cheh
-              pass
+        def __init__(self):
+            super().__init__() 
+        def run(self):
+            while True:
+                time.sleep(1)
+                r=random.randrange(0,1000)
+                if r<1:
+                    os.kill(os.getppid(), signal.SIGINT)
+                elif r<31:
+                    os.kill(os.getppid(), signal.SIGUSR2)
+                elif r<81:
+                    os.kill(os.getppid(), signal.SIGALRM)
+                elif r<91:
+                    os.kill(os.getppid(), signal.SIGUSR1)
+                else:
+                    pass    
+
                
 if __name__=='__main__':
+    m = Market(10)
     p=Weather(22)
+    m.start()
     p.start()
+    m.join()
     p.join()
+    
 
