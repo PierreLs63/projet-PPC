@@ -4,47 +4,68 @@ import multiprocessing
 import time
 import signal
 import os
+import sysv_ipc
+import socket
+class DataEchange():
+    def __init__(self, pid, quantite,message):
+        self.pid=pid
+        self.quantite =quantite 
+        self.message=message
 # Create a Python script that simulates an energy-producing and consuming home
-class Home:
-    def __init__(self, production_rate, consumption_rate, trade_policy):
+class Home(multiprocessing.Process):
+    def __init__(self, production_rate, consumption_rate, trade_policy,socket_number, queue):
+        super().__init__()
+        self.a=production_rate
         self.production_rate = production_rate
         self.consumption_rate = consumption_rate
         self.trade_policy = trade_policy
+        self.achat=0
         self.surplus = 0
+        self.socket_number=socket_number
+        self.queue=queue
+        self.a = 1
+        self.b = 2
+        self.c = 3
         
     def calculate_surplus(self):
         self.surplus = self.production_rate - self.consumption_rate
         
     def trade_energy(self):
-        if self.trade_policy == "always_give":
-            # give away surplus energy to other homes
-            pass
-        elif self.trade_policy == "always_sell":
-            # sell surplus energy to the market
-            pass
-        else:  # self.trade_policy == "sell_if_no_takers"
-            # check if other homes want surplus energy
-            # if not, sell to the market
-            pass
+        pass
+    def run(self):
+        time.sleep(1)
+        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client.connect(('localhost', 10000))
+        data = f"{self.a} {self.b} {self.c}"
+        client.sendall(data.encode())
+        print(f"Sent: {data}")
+        client.close()    
+         
 
 
 class Market(multiprocessing.Process):
-    def __init__(self, initial_price):
+    def __init__(self, initial_price, temperature,ensoleillement,temp_change,duration,upDown):
         super().__init__()
+        self.temperature = temperature
+        self.temp_change = temp_change
+        self.upDown = upDown
+        self.duration = duration
+        self.ensoleillement = ensoleillement
         self.price = initial_price
-        self.temperature = multiprocessing.Value('d', 0.0)
-        self.ensoleillement = multiprocessing.Value('i', 0)
+        self.transactions_lock =  multiprocessing.Lock()
         signal.signal(signal.SIGINT, self.HiverVolcanique)
         signal.signal(signal.SIGUSR1, self.GulfWar)
         signal.signal(signal.SIGUSR2, self.Siberia)
         signal.signal(signal.SIGALRM, self.RetourNormal)
 
     def HiverVolcanique(self, signum, frame):
-        print("cheh")
+        print("Hiver Volcanique")
         exit(0)
     
     def GulfWar(self, signum, frame):
         print("Received SIGUSR1. Outputting data to output1.txt...")
+        self.update_price(50)
+        #print(self.price)
         with open('output1.txt', 'w') as f:
             f.write('Data outputted by SIGUSR1')
 
@@ -71,71 +92,105 @@ class Market(multiprocessing.Process):
     def run(self):
         print('salut')
         t=External()
-        t.run()
+        threadh1=threading.Thread(target=self.communicate_with_h1)
+        threadh2=threading.Thread(target=self.communicate_with_h2)
+        threadh3=threading.Thread(target=self.communicate_with_h3)
+        threadh1.start()
+        threadh2.start()
+        threadh3.start()
+        threadh1.join()
+        threadh2.join()
+        threadh3.join()
         while True:
-            time.sleep(1)
-            pass
-
+            t.run()
+        
+    
+    def communicate_with_h1(self):
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.bind(('localhost', 10000))
+        server.listen()
+        client, address = server.accept()
+        print(f"Connected to {address}")
+        while True:
+            data = client.recv(1024).decode()
+            if not data:
+                break
+            a, b, c = map(int, data.split())
+            print(f"Received: {a=} {b=} {c=}")    
+        client.close()    
+    def communicate_with_h2(self):
+        print('test')
+        pass
+    def communicate_with_h3(self):
+        print('test')
+        pass
 
 class Weather(multiprocessing.Process):
-    def __init__(self, temperature):
+    def __init__(self, temperature,ensoleillement,temp_change,duration,upDown):
         super().__init__()
         self.temperature = temperature
-        self.temp_change = 2
-        self.upDown = -1
-        self.duration = 5
-        self.ensoleillement = 0.5
-        
+        self.temp_change = temp_change
+        self.upDown = upDown
+        self.duration = duration
+        self.ensoleillement = ensoleillement
     def update_temperature(self):
-        
-        if self.duration>=0:
-            self.duration-=1
-            self.temperature += self.upDown*int(self.temp_change*random.randrange(0,10)/10)
+        if self.duration.value>=0:
+            self.duration.value-=1
+            self.temperature.value += self.upDown.value*int(self.temp_change.value*random.randrange(0,10)/10)
         else:
-            self.upDown=random.choice([-1, 1])
-            self.duration = random.randrange(3,7)
-            self.temperature += self.upDown*int(self.temp_change*random.randrange(0,10)/10)    
+            self.upDown.value=random.choice([-1, 1])
+            self.duration.value = random.randrange(3,7)
+            self.temperature.value+= self.upDown.value*int(self.temp_change.value*random.randrange(0,10)/10)
     def update_ensoleillement(self):
         a= random.randrange(-10,10)/100
-        if a+self.ensoleillement >=1:
-            self.ensoleillement=1
-        elif a+self.ensoleillement <=0:
-            self.ensoleillement=0   
+        if a+self.ensoleillement.value >=1:
+            self.ensoleillement.value=1
+        elif a+self.ensoleillement.value <=0:
+            self.ensoleillement.value=0   
         else:
-            self.ensoleillement+=a     
+            self.ensoleillement.value+=a     
     def run(self):
         while True:
             self.update_temperature()
-            self.update_ensoleillement()
-            #print(self.temperature)
-            #print(self.ensoleillement)
+            self.update_ensoleillement()  
+            #print(self.temperature.value)
+            #print(self.ensoleillement.value)
             time.sleep(1)     
 
 class External(multiprocessing.Process):
         def __init__(self):
             super().__init__() 
         def run(self):
-            while True:
-                time.sleep(1)
-                r=random.randrange(0,1000)
-                if r<1:
-                    os.kill(os.getppid(), signal.SIGINT)
-                elif r<31:
-                    os.kill(os.getppid(), signal.SIGUSR2)
-                elif r<81:
-                    os.kill(os.getppid(), signal.SIGALRM)
-                elif r<91:
-                    os.kill(os.getppid(), signal.SIGUSR1)
-                else:
-                    pass    
+            time.sleep(1)
+            r=random.randrange(0,1000)
+            if r<1:
+                os.kill(os.getppid(), signal.SIGINT)
+            elif r<31:
+                os.kill(os.getppid(), signal.SIGUSR2)
+            elif r<81:
+                os.kill(os.getppid(), signal.SIGALRM)
+            elif r<901:
+                os.kill(os.getppid(), signal.SIGUSR1)
+            else:
+                pass    
 
                
 if __name__=='__main__':
-    m = Market(10)
-    p=Weather(22)
+    temperature = multiprocessing.Value('i', 22)
+    ensoleillement = multiprocessing.Value('d', 0.5)
+    temp_change = multiprocessing.Value('i', 2)
+    duration = multiprocessing.Value('i', 4)
+    upDown = multiprocessing.Value('i', -1)
+    queue = sysv_ipc.MessageQueue
+    time.sleep(1)
+    m = Market(10,temperature,ensoleillement,temp_change,duration,upDown)
+    p=Weather(temperature,ensoleillement,temp_change,duration,upDown)
+    h1=Home(10,8,"always give",10000,queue)
+    h1.start()
     m.start()
     p.start()
     m.join()
     p.join()
+    h1.join()
     
 
