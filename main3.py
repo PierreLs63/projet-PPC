@@ -11,14 +11,12 @@ PORT = 10003
 HOST = 'localhost'
 
 
-def Home(stock,equilibre,politique,queue):
+def Home(stock,equilibre,politique,temperature,ensoleillement):
     while True:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as home_socket:
-            print("hello1\n")
+            print('home1-debut de tour:'+str(stock))
             home_socket.connect((HOST, PORT))
-            print("hello2\n")
             if stock<equilibre:
-                stock=recevoirEtEchanger(stock,equilibre,queue)
                 if(stock<equilibre):
                     msg = 'InNeed '+str(equilibre-stock)
                     home_socket.sendall(msg.encode())
@@ -27,43 +25,20 @@ def Home(stock,equilibre,politique,queue):
                     msg = 'ToSell '+str(stock-equilibre)
                     home_socket.sendall(msg.encode())
                     stock=equilibre
-                elif(politique=='AGive'):
-                        pid=os.getpid()
-                        mess=str(stock)+","+str(pid)+",Besoin?"
-                        message=(mess).encode()
-                        queue.send(message)
-                        time.sleep(1)
-                        try:
-                            m,t=queue.receive(type=pid, block=False)
-                            value=m.decode().split(",")
-                            value=int(value[0])
-                            stock-=value
-                        except sysv_ipc.BusyError:    
-                            pass
+                elif(politique=='AGive'):   
+                    pass
                 elif(politique=='SellOrGive'):
-                    pid=os.getpid()
-                    mess=str(stock)+","+str(pid)+",Besoin?"
-                    message=(mess).encode()
-                    queue.send(message)
-                    time.sleep(1)
-                    try:
-                        m,t=queue.receive(type=pid, block=False)
-                        value=m.decode().split(",")
-                        value=int(value[0])
-                        stock-=value
-                    except sysv_ipc.BusyError:
-                        msg = 'ToSell '+str(stock-equilibre)
-                        home_socket.sendall(msg.encode())
-                        stock=equilibre
+                    pass
             data = home_socket.recv(1024)
             stock+=int(data.decode()) 
-            print('home1:'+str(stock))
-        #stock+=UpdateSurplus(temperature.value,ensoleillement.value)   
+            print('home1-fin de tour:'+str(stock))
+        stock+=UpdateSurplus(temperature.value,ensoleillement.value)   
         time.sleep(1)    
 
 def Home2(stock,equilibre):
     while True:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as home_socket:
+            print('home2-debut de tour:'+str(stock)) 
             home_socket.connect((HOST, PORT))
             if stock>equilibre:
                 msg = 'ToSell '+str(stock-equilibre)
@@ -73,7 +48,7 @@ def Home2(stock,equilibre):
                 home_socket.sendall(msg.encode())    
             data = home_socket.recv(1024)
             stock+=int(data.decode()) 
-            print('home2:'+str(stock))  
+            print('home2-fin de tour:'+str(stock))  
         time.sleep(1)    
 
 def recevoirEtEchanger(surplus,equilibre,queue):
@@ -110,23 +85,22 @@ def Market(stock):
         market_socket.listen(2)
         print('market:'+str(stock))
         while True:
-            print("conn\n")
             conn, addr = market_socket.accept()
             stock = handleMsg(conn,addr,stock)
             print('market:'+str(stock))
     e.join()        
 
-def UpdatePrice(actualPrice):
-    pass
+def UpdatePrice(ancienStock,nouveauStock,ancienPrix):
+    return ancienPrix (nouveauStock-ancienPrix)/10
 
 def UpdateConsumation(temperature):
-    if(temperature.value>15):
-        return 6
+    if(temperature>15):
+        return 3
     else:
-        return 6 + int((15-temperature.value)/3)
+        return 3 + int((15-temperature)/3)
 
 def UpdateProduction(ensoleillement):
-    return int(ensoleillement.value*10)
+    return int(ensoleillement*10)
 
 def UpdateSurplus(temperature,ensoleillement):
         surplus= UpdateProduction(ensoleillement)-UpdateConsumation(temperature)
@@ -218,15 +192,15 @@ if __name__=='__main__':
     market = multiprocessing.Process(target=Market, args=(5,))
     market.start()
     queue=sysv_ipc.MessageQueue(130,sysv_ipc.IPC_CREAT)
-    home = multiprocessing.Process(target=Home, args=(10,9,'ASell',queue))
-    #home2 = multiprocessing.Process(target=Home2, args=(5,7)) 
+    home = multiprocessing.Process(target=Home, args=(10,9,'ASell',temperature,ensoleillement))
+    home2 = multiprocessing.Process(target=Home2, args=(5,7)) 
     w=multiprocessing.Process(target=Weather, args=(temperature,ensoleillement,temp_change,duration,upDown))
     w.start()
     time.sleep(2)
     home.start()
-    #home2.start()
+    home2.start()
     w.join()
     home.join()
-    #home2.join()
+    home2.join()
     market.join()
 
