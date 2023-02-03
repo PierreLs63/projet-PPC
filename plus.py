@@ -139,6 +139,7 @@ def UpdateSurplus(temperature,ensoleillement):
     
 
 def handleMsg(conn,addr,stock):
+    print("message")
     data = conn.recv(1024)
     dataStr=data.decode()
     message=dataStr.split(' ')[0]
