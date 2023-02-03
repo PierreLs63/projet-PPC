@@ -1,0 +1,3 @@
+Pour l'éxécution, il suffit de taper "python3 main.py" à partir du terminal dans le bon répertoire, sous un système Linux. 
+Les paramètres de la simulation ne peuvent pas être donnés dans le terminal. Il faut les modifier dans la partie if __name__=="__main__" qui décrit la création des processus. 
+Il faut utiliser la bibliothèque sysv_ipc qui doit être téléchargée en plus du logiciel Python. La version de Python utilisée est Python 3.10
